@@ -8,10 +8,12 @@
     body { font-family: Arial, sans-serif; background:#f4f6f8; text-align:center; padding:20px; }
     .screen { background:#333; color:#fff; padding:10px; margin:20px auto; width:60%; border-radius:6px; }
     .row { margin-bottom:10px; }
-    .seat { width:42px; height:42px; margin:4px; display:inline-flex; align-items:center; justify-content:center; border-radius:6px; cursor:pointer; font-size:12px; background:#4caf50; color:#fff; }
+    .seat { width:44px; height:44px; margin:4px; display:inline-flex; align-items:center; justify-content:center; border-radius:6px; cursor:pointer; font-size:12px; background:#4caf50; color:#fff; }
     .seat.booked { background:#e74c3c; cursor:not-allowed; }
     .seat.selected { background:#f1c40f; color:#000; }
     input, button { padding:8px; margin:6px; }
+    .price { margin-top:10px; font-weight:bold; }
+    .note { font-size:13px; color:#555; }
   </style>
 </head>
 <body>
@@ -25,14 +27,24 @@
 <div class="screen">SCREEN</div>
 <div id="seating"></div>
 
+<div class="price" id="priceText">Amount: —</div>
+<p class="note">Rows A & B: ₹80 | Rows C–E: ₹50</p>
+
 <button onclick="confirmBooking()">Confirm Booking</button>
 
 <script>
 const rows = ['A','B','C','D','E'];
 const seatsPerRow = 10;
 let selectedSeat = null;
+let selectedAmount = 0;
 
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxy592YkLxW1wqkgJcLVv7Jb32K_MZZUoQ1mamA6cAGbpAghpMcBR1sWWnEh7IzKZuBig/exec";
+// 👉 PASTE your Google Apps Script Web App URL here
+const SCRIPT_URL = "PASTE_GOOGLE_SCRIPT_URL_HERE";
+
+function seatPrice(seatId) {
+  const row = seatId.charAt(0);
+  return (row === 'A' || row === 'B') ? 80 : 50;
+}
 
 function loadSeats() {
   fetch(SCRIPT_URL)
@@ -61,29 +73,44 @@ function drawSeats(booked) {
 
 function selectSeat(seat,id) {
   if (seat.classList.contains('booked')) {
-    alert('Seat already booked'); return;
+    alert('❌ Seat already booked'); return;
   }
   document.querySelectorAll('.seat').forEach(s=>s.classList.remove('selected'));
   seat.classList.add('selected');
-  selectedSeat=id;
+  selectedSeat = id;
+  selectedAmount = seatPrice(id);
+  document.getElementById('priceText').innerText = `Amount: ₹${selectedAmount}`;
 }
 
 function confirmBooking() {
-  const parent = document.getElementById('parent').value;
-  const student = document.getElementById('student').value;
+  const parent = document.getElementById('parent').value.trim();
+  const student = document.getElementById('student').value.trim();
   if (!parent || !student || !selectedSeat) {
-    alert('Fill all details and select a seat'); return;
+    alert('⚠️ Fill all details and select a seat'); return;
   }
 
   fetch(SCRIPT_URL, {
     method:'POST',
-    body: JSON.stringify({parent, student, seat:selectedSeat})
+    body: JSON.stringify({ parent, student, seat: selectedSeat, amount: selectedAmount })
   })
   .then(r=>r.text())
-  .then(msg=>{ alert(msg); selectedSeat=null; loadSeats(); });
+  .then(msg=>{
+    alert(`✅ Booking Confirmed!\nSeat: ${selectedSeat}\nAmount: ₹${selectedAmount}`);
+    selectedSeat=null; selectedAmount=0;
+    document.getElementById('priceText').innerText = 'Amount: —';
+    loadSeats();
+  });
 }
 
 loadSeats();
 </script>
 </body>
 </html>
+
+<!--
+IMPORTANT (Google Sheet):
+Add a new column E with header: Amount
+
+APPS SCRIPT (replace doPost appendRow with this order):
+appendRow([ new Date(), data.parent, data.student, data.seat, data.amount ]);
+-->
