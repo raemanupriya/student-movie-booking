@@ -1,179 +1,145 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8">
-  <title>Student Movie Show – Seat Booking</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
+  <title>Student Movie Booking</title>
   <style>
     body {
-      font-family: Arial, sans-serif;
-      background: #f4f6f8;
+      font-family: Arial;
       text-align: center;
-      padding: 20px;
-    }
-    .screen {
-      background: #333;
-      color: #fff;
-      padding: 10px;
-      margin: 20px auto;
-      width: 60%;
-      border-radius: 6px;
-    }
-    .row {
-      margin-bottom: 10px;
     }
     .seat {
-      width: 44px;
-      height: 44px;
+      width: 40px;
+      height: 40px;
       margin: 4px;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      border-radius: 6px;
+      background: #4CAF50;
+      color: white;
+      border: none;
       cursor: pointer;
-      font-size: 12px;
-      background: #4caf50;
-      color: #fff;
     }
     .seat.booked {
-      background: #e74c3c;
+      background: #999;
       cursor: not-allowed;
     }
     .seat.selected {
-      background: #f1c40f;
-      color: #000;
+      background: #ff9800;
     }
-    input, button {
-      padding: 8px;
-      margin: 6px;
-      font-size: 14px;
-    }
-    .price {
-      margin-top: 10px;
-      font-weight: bold;
-    }
-    .note {
-      font-size: 13px;
-      color: #555;
+    .row {
+      margin-bottom: 6px;
     }
   </style>
 </head>
 
 <body>
+<h2>🎬 Student Movie Show Booking</h2>
 
-<h2>🎬 Student Movie Show – Seat Booking</h2>
-<p>Enter details & select ONE seat</p>
+<input id="parent" placeholder="Parent Name" required><br><br>
+<input id="student" placeholder="Student Name" required><br><br>
 
-<input id="parent" placeholder="Parent Name">
-<input id="student" placeholder="Student Name">
+<label><b>Select Time Slot</b></label><br>
+<select id="slot" onchange="loadSeats()" required>
+  <option value="">-- Select Slot --</option>
+  <option>9:00 – 9:30</option>
+  <option>9:45 – 10:15</option>
+  <option>10:30 – 11:00</option>
+  <option>11:15 – 11:45</option>
+  <option>12:00 – 12:30</option>
+  <option>12:45 – 1:15</option>
+</select>
 
-<div class="screen">SCREEN</div>
-<div id="seating"></div>
+<h3>Select Seat</h3>
+<div id="seats"></div>
 
-<div class="price" id="priceText">Amount: —</div>
-<p class="note">Rows A & B: ₹80 | Rows C–E: ₹50</p>
+<br>
+<button onclick="bookSeat()">Confirm Booking</button>
 
-<button onclick="confirmBooking()">Confirm Booking</button>
+<p id="result"></p>
 
 <script>
-  const rows = ['A','B','C','D','E'];
-  const seatsPerRow = 10;
+const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxy592YkLxW1wqkgJcLVv7Jb32K_MZZUoQ1mamA6cAGbpAghpMcBR1sWWnEh7IzKZuBig/exec";
+let selectedSeat = null;
+let bookedSeats = [];
 
-  let selectedSeat = null;
-  let selectedAmount = 0;
+function loadSeats() {
+  const slot = document.getElementById("slot").value;
+  if (!slot) return;
 
-  // 🔴 PASTE YOUR GOOGLE APPS SCRIPT WEB APP URL HERE
-  const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxy592YkLxW1wqkgJcLVv7Jb32K_MZZUoQ1mamA6cAGbpAghpMcBR1sWWnEh7IzKZuBig/exec";
+  fetch(WEB_APP_URL)
+    .then(res => res.json())
+    .then(data => {
+      bookedSeats = data;
+      renderSeats();
+    });
+}
 
-  function seatPrice(seatId) {
-    const row = seatId.charAt(0);
-    return (row === 'A' || row === 'B') ? 80 : 50;
-  }
+function renderSeats() {
+  const container = document.getElementById("seats");
+  container.innerHTML = "";
+  selectedSeat = null;
 
-  function loadSeats() {
-    fetch(SCRIPT_URL)
-      .then(res => res.json())
-      .then(data => drawSeats(data))
-      .catch(() => drawSeats([]));   // SAFETY: always show seats
-  }
+  const slot = document.getElementById("slot").value;
 
-  function drawSeats(bookedSeats) {
-    const seatingDiv = document.getElementById("seating");
-    seatingDiv.innerHTML = "";
+  for (let r = 1; r <= 5; r++) {
+    const rowDiv = document.createElement("div");
+    rowDiv.className = "row";
 
-    rows.forEach(row => {
-      const rowDiv = document.createElement("div");
-      rowDiv.className = "row";
+    for (let c = 1; c <= 10; c++) {
+      const seat = document.createElement("button");
+      const label = String.fromCharCode(64 + r) + c;
+      const key = slot + "_" + label;
 
-      for (let i = 1; i <= seatsPerRow; i++) {
-        const seatId = row + i;
-        const seat = document.createElement("div");
-        seat.className = "seat";
-        seat.innerText = seatId;
+      seat.textContent = label;
+      seat.className = "seat";
 
-        if (bookedSeats.includes(seatId)) {
-          seat.classList.add("booked");
-        }
-
-        seat.onclick = () => selectSeat(seat, seatId);
-        rowDiv.appendChild(seat);
+      if (bookedSeats.includes(key)) {
+        seat.classList.add("booked");
+        seat.disabled = true;
       }
 
-      seatingDiv.appendChild(rowDiv);
-    });
+      seat.onclick = () => selectSeat(seat, label);
+      rowDiv.appendChild(seat);
+    }
+    container.appendChild(rowDiv);
+  }
+}
+
+function selectSeat(btn, label) {
+  document.querySelectorAll(".seat").forEach(s => s.classList.remove("selected"));
+  btn.classList.add("selected");
+  selectedSeat = label;
+}
+
+function bookSeat() {
+  const parent = document.getElementById("parent").value;
+  const student = document.getElementById("student").value;
+  const slot = document.getElementById("slot").value;
+
+  if (!parent || !student || !slot || !selectedSeat) {
+    alert("Please fill all fields and select a seat");
+    return;
   }
 
-  function selectSeat(seat, seatId) {
-    if (seat.classList.contains("booked")) {
-      alert("❌ Seat already booked");
-      return;
-    }
-
-    document.querySelectorAll(".seat").forEach(s => s.classList.remove("selected"));
-    seat.classList.add("selected");
-
-    selectedSeat = seatId;
-    selectedAmount = seatPrice(seatId);
-
-    document.getElementById("priceText").innerText =
-      "Amount: ₹" + selectedAmount;
-  }
-
-  function confirmBooking() {
-    const parent = document.getElementById("parent").value.trim();
-    const student = document.getElementById("student").value.trim();
-
-    if (!parent || !student || !selectedSeat) {
-      alert("⚠️ Please fill all details and select a seat");
-      return;
-    }
-
-    fetch(SCRIPT_URL, {
-      method: "POST",
-      body: JSON.stringify({
-        parent: parent,
-        student: student,
-        seat: selectedSeat,
-        amount: selectedAmount
-      })
+  fetch(WEB_APP_URL, {
+    method: "POST",
+    body: JSON.stringify({
+      parent: parent,
+      student: student,
+      seat: selectedSeat,
+      slot: slot
     })
-    .then(res => res.text())
-    .then(msg => {
-      alert(
-        "✅ Booking Confirmed!\n" +
-        "Seat: " + selectedSeat + "\n" +
-        "Amount: ₹" + selectedAmount
-      );
-
-      selectedSeat = null;
-      selectedAmount = 0;
-      document.getElementById("priceText").innerText = "Amount: —";
+  })
+  .then(res => res.json())
+  .then(resp => {
+    if (resp.status === "success") {
+      document.getElementById("result").innerHTML =
+        `✅ Seat <b>${resp.seat}</b><br>
+         ⏰ Slot: <b>${resp.slot}</b><br>
+         💰 Amount: <b>₹${resp.amount}</b>`;
       loadSeats();
-    });
-  }
-
-  loadSeats();
+    } else {
+      alert(resp.message);
+    }
+  });
+}
 </script>
 
 </body>
